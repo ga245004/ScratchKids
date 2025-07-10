@@ -13,6 +13,7 @@ import { Progress } from './components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { soundManager, playClick, playSuccess, playError, playHover, playComplete, playBadge, playStep, playSave } from './utils/soundEffects';
+import { getGuestProjects, createGuestProject, updateGuestProject, getGuestProject, updateGuestUserStats, getGuestBadges } from './utils/guestDataManager';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
