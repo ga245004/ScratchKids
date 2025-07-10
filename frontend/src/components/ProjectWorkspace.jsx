@@ -1,31 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { mockProjectSteps } from '../mock/mockData';
+import { playClick, playStep, playComplete, playSave } from '../utils/soundEffects';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
 const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
-  const [currentMode, setCurrentMode] = useState('guided');
-  const [currentStep, setCurrentStep] = useState(project.currentStep || 1);
-  const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [currentMode, setCurrentMode] = useState(project.mode || 'guided');
+  const [currentStep, setCurrentStep] = useState(project.current_step || 1);
+  const [projectSteps, setProjectSteps] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const projectSteps = mockProjectSteps[project.id] || [];
+  useEffect(() => {
+    loadProjectSteps();
+  }, [project]);
+
+  const loadProjectSteps = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API}/templates/${project.template_id}`);
+      setProjectSteps(response.data.steps || []);
+    } catch (error) {
+      console.error('Error loading project steps:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const currentStepData = projectSteps[currentStep - 1];
 
-  const handleStepComplete = (stepId) => {
-    setCompletedSteps(prev => new Set([...prev, stepId]));
-    if (currentStep < projectSteps.length) {
-      setCurrentStep(currentStep + 1);
+  const handleStepComplete = async (stepId) => {
+    playStep();
+    
+    const nextStep = currentStep + 1;
+    const isCompleted = nextStep > projectSteps.length;
+    
+    if (isCompleted) {
+      playComplete();
     }
-    // Mock saving progress
-    onSaveProgress(project.id, currentStep + 1);
+    
+    setCurrentStep(nextStep);
+    await onSaveProgress(project.id, nextStep, isCompleted);
   };
 
   const handleStepSelect = (stepNumber) => {
+    playClick();
     setCurrentStep(stepNumber);
   };
+
+  const handleModeChange = (mode) => {
+    playClick();
+    setCurrentMode(mode);
+  };
+
+  const handleSave = async () => {
+    playSave();
+    await onSaveProgress(project.id, currentStep, project.is_completed);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-6xl animate-spin">{project.thumbnail}</div>
+          <p className="text-xl text-gray-600">Loading project...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
@@ -34,7 +81,13 @@ const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={onBack}>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  playClick();
+                  onBack();
+                }}
+              >
                 ← Back to Projects
               </Button>
               <div className="flex items-center space-x-3">
@@ -61,7 +114,7 @@ const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Project Mode
-                  <Tabs value={currentMode} onValueChange={setCurrentMode}>
+                  <Tabs value={currentMode} onValueChange={handleModeChange}>
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="guided">Guided</TabsTrigger>
                       <TabsTrigger value="free">Free</TabsTrigger>
@@ -97,7 +150,7 @@ const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
                             className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
                               currentStep === index + 1
                                 ? 'border-purple-500 bg-purple-50'
-                                : step.isCompleted || completedSteps.has(step.id)
+                                : index + 1 < currentStep
                                 ? 'border-green-500 bg-green-50'
                                 : 'border-gray-200 hover:border-gray-300'
                             }`}
@@ -105,13 +158,13 @@ const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
                           >
                             <div className="flex items-center space-x-2">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                step.isCompleted || completedSteps.has(step.id)
+                                index + 1 < currentStep
                                   ? 'bg-green-500 text-white'
                                   : currentStep === index + 1
                                   ? 'bg-purple-500 text-white'
                                   : 'bg-gray-300 text-gray-600'
                               }`}>
-                                {step.isCompleted || completedSteps.has(step.id) ? '✓' : index + 1}
+                                {index + 1 < currentStep ? '✓' : index + 1}
                               </div>
                               <div className="flex-1">
                                 <p className="font-medium text-sm">{step.title}</p>
@@ -132,10 +185,34 @@ const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
                     <div className="space-y-2">
                       <h4 className="font-medium text-sm">Quick Tools:</h4>
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" size="sm">Add Sprite</Button>
-                        <Button variant="outline" size="sm">Add Sound</Button>
-                        <Button variant="outline" size="sm">Add Background</Button>
-                        <Button variant="outline" size="sm">Add Motion</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => playClick()}
+                        >
+                          Add Sprite
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => playClick()}
+                        >
+                          Add Sound
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => playClick()}
+                        >
+                          Add Background
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => playClick()}
+                        >
+                          Add Motion
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -164,7 +241,7 @@ const ProjectWorkspace = ({ project, onBack, onSaveProgress }) => {
                     <>
                       <span>Free Building Mode</span>
                       <Button
-                        onClick={() => onSaveProgress(project.id, currentStep)}
+                        onClick={handleSave}
                         className="bg-purple-500 hover:bg-purple-600 text-white"
                       >
                         💾 Save Project
