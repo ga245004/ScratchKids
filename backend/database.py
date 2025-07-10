@@ -1,6 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import List, Optional, Dict, Any
-from models import User, UserProject, ProjectTemplate, Badge, UserBadge
+from .models import User, UserProject, ProjectTemplate, Badge, UserBadge
 import os
 from datetime import datetime
 
