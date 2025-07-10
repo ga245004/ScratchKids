@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
+import { playClick } from '../utils/soundEffects';
 
 const ProjectCard = ({ project, onStartProject, onContinueProject }) => {
   const getDifficultyColor = (difficulty) => {
@@ -37,6 +38,16 @@ const ProjectCard = ({ project, onStartProject, onContinueProject }) => {
     }
   };
 
+  const handleStartProject = () => {
+    playClick();
+    onStartProject(project);
+  };
+
+  const handleContinueProject = () => {
+    playClick();
+    onContinueProject(project);
+  };
+
   return (
     <Card className="group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white border-2 border-gray-200 hover:border-purple-300">
       <CardHeader className="pb-3">
@@ -63,9 +74,9 @@ const ProjectCard = ({ project, onStartProject, onContinueProject }) => {
         </p>
         
         <div className="text-xs text-gray-500 flex items-center gap-2">
-          <span>⏱️ {project.estimatedTime}</span>
+          <span>⏱️ {project.estimated_time}</span>
           <span>•</span>
-          <span>📚 {project.totalSteps} steps</span>
+          <span>📚 {project.total_steps || 10} steps</span>
         </div>
 
         {project.progress > 0 && (
@@ -78,30 +89,30 @@ const ProjectCard = ({ project, onStartProject, onContinueProject }) => {
             </div>
             <Progress value={project.progress} className="h-2" />
             <p className="text-xs text-gray-500">
-              Step {project.currentStep} of {project.totalSteps}
+              Step {project.current_step || 0} of {project.total_steps || 10}
             </p>
           </div>
         )}
 
         <div className="pt-2">
-          {project.isCompleted ? (
+          {project.is_completed ? (
             <Button 
               className="w-full bg-green-500 hover:bg-green-600 text-white"
-              onClick={() => onStartProject(project)}
+              onClick={handleStartProject}
             >
               ✅ Completed - View Project
             </Button>
           ) : project.progress > 0 ? (
             <Button 
               className="w-full bg-purple-500 hover:bg-purple-600 text-white"
-              onClick={() => onContinueProject(project)}
+              onClick={handleContinueProject}
             >
               Continue Building
             </Button>
           ) : (
             <Button 
               className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-              onClick={() => onStartProject(project)}
+              onClick={handleStartProject}
             >
               Start Project
             </Button>
