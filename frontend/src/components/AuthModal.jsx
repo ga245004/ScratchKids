@@ -16,13 +16,38 @@ const AuthModal = ({ isOpen, onClose }) => {
     password: '', 
     avatar: '🦸‍♂️' 
   });
+  const [guestData, setGuestData] = useState({ username: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab, setActiveTab] = useState('guest');
   
-  const { login, register } = useAuth();
+  const { login, register, loginAsGuest } = useAuth();
 
   const avatarOptions = ['🦸‍♂️', '🦸‍♀️', '🐱', '🐶', '🦁', '🐸', '🦋', '🚀', '🌟', '🎨'];
+
+  const handleGuestLogin = async (e) => {
+    e.preventDefault();
+    if (!guestData.username.trim()) {
+      setError('Please enter a username');
+      return;
+    }
+    
+    playClick();
+    setLoading(true);
+    setError('');
+
+    const result = await loginAsGuest(guestData.username);
+    
+    if (result.success) {
+      playSuccess();
+      onClose();
+    } else {
+      playError();
+      setError(result.error);
+    }
+    
+    setLoading(false);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -89,10 +114,50 @@ const AuthModal = ({ isOpen, onClose }) => {
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="guest">Quick Start</TabsTrigger>
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Sign Up</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="guest">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center text-green-600">🚀 Start Coding Now!</CardTitle>
+                <p className="text-sm text-center text-gray-600">
+                  Just enter a username and start building amazing projects!
+                </p>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleGuestLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="guest-username">Choose a Cool Username</Label>
+                    <Input
+                      id="guest-username"
+                      type="text"
+                      placeholder="CodeNinja, ArtMaster, GameBuilder..."
+                      value={guestData.username}
+                      onChange={(e) => setGuestData({ username: e.target.value })}
+                      required
+                    />
+                  </div>
+                  {error && (
+                    <div className="text-red-500 text-sm text-center">{error}</div>
+                  )}
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white text-lg py-3"
+                    disabled={loading}
+                  >
+                    {loading ? 'Getting Ready...' : '🎮 Start Creating!'}
+                  </Button>
+                  <div className="text-xs text-center text-gray-500 mt-2">
+                    Your progress will be saved on this device. Create an account later to save forever!
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
           
           <TabsContent value="login">
             <Card>
@@ -141,7 +206,10 @@ const AuthModal = ({ isOpen, onClose }) => {
           <TabsContent value="register">
             <Card>
               <CardHeader>
-                <CardTitle className="text-center">Join the Fun!</CardTitle>
+                <CardTitle className="text-center">Create Your Account!</CardTitle>
+                <p className="text-sm text-center text-gray-600">
+                  Save your progress forever and unlock special features!
+                </p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleRegister} className="space-y-4">
