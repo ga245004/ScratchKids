@@ -27,7 +27,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isGuest } = useAuth();
 
   const categories = [
     { id: 'all', name: 'All Projects', icon: '🎯' },
@@ -41,12 +41,36 @@ const Dashboard = () => {
 
   // Load user data and projects
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isGuest) {
       loadUserData();
+    } else if (isAuthenticated && isGuest) {
+      loadGuestData();
     } else {
       loadTemplates();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isGuest]);
+
+  const loadGuestData = async () => {
+    try {
+      setLoading(true);
+      // Load templates from backend
+      const templatesRes = await axios.get(`${API}/templates`);
+      setTemplates(templatesRes.data);
+      
+      // Load guest projects from localStorage
+      const guestProjects = getGuestProjects();
+      setProjects(guestProjects);
+      
+      // Load guest badges
+      const guestBadges = getGuestBadges();
+      setBadges(guestBadges);
+    } catch (error) {
+      console.error('Error loading guest data:', error);
+      playError();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadUserData = async () => {
     try {
