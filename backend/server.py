@@ -8,14 +8,14 @@ from pathlib import Path
 from typing import List, Optional
 from datetime import timedelta
 
-from .models import (
+from models import (
     User, UserCreate, UserLogin, UserResponse, 
     ProjectTemplate, ProjectTemplateCreate,
     UserProject, UserProjectCreate, UserProjectUpdate,
     Badge, BadgeCreate, ProgressUpdate
 )
-from .database import database
-from .auth import verify_password, get_password_hash, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from database import database
+from auth import verify_password, get_password_hash, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
