@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import axios from 'axios';
 import Header from './components/Header';
 import ProjectCard from './components/ProjectCard';
 import ProjectWorkspace from './components/ProjectWorkspace';
+import AuthModal from './components/AuthModal';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
 import { Progress } from './components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { mockProjects, mockCategories, mockUser, mockBadges } from './mock/mockData';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { soundManager, playClick, playSuccess, playError, playHover, playComplete, playBadge, playStep, playSave } from './utils/soundEffects';
 
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState('projects');
