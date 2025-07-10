@@ -14,39 +14,180 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { soundManager, playClick, playSuccess, playError, playHover, playComplete, playBadge, playStep, playSave } from './utils/soundEffects';
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState('projects');
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [projects, setProjects] = useState(mockProjects);
+  const [projects, setProjects] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [badges, setBadges] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  const { user, isAuthenticated } = useAuth();
 
-  const handleStartProject = (project) => {
-    setSelectedProject(project);
+  const categories = [
+    { id: 'all', name: 'All Projects', icon: '🎯' },
+    { id: 'animation', name: 'Animation', icon: '🎬' },
+    { id: 'game', name: 'Games', icon: '🎮' },
+    { id: 'music', name: 'Music', icon: '🎵' },
+    { id: 'story', name: 'Stories', icon: '📚' },
+    { id: 'science', name: 'Science', icon: '🔬' },
+    { id: 'art', name: 'Art', icon: '🎨' }
+  ];
+
+  // Load user data and projects
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserData();
+    } else {
+      loadTemplates();
+    }
+  }, [isAuthenticated]);
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      const [projectsRes, templatesRes, badgesRes] = await Promise.all([
+        axios.get(`${API}/projects`),
+        axios.get(`${API}/templates`),
+        axios.get(`${API}/my-badges`)
+      ]);
+      
+      setProjects(projectsRes.data);
+      setTemplates(templatesRes.data);
+      setBadges(badgesRes.data);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      playError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API}/templates`);
+      setTemplates(response.data);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      playError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartProject = async (projectOrTemplate) => {
+    playClick();
+    
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    try {
+      // Check if this is an existing project or a template
+      if (projectOrTemplate.user_id) {
+        // Existing project
+        setSelectedProject(projectOrTemplate);
+      } else {
+        // Template - create new project
+        const response = await axios.post(`${API}/projects`, {
+          template_id: projectOrTemplate.id,
+          mode: 'guided'
+        });
+        setSelectedProject(response.data);
+        await loadUserData(); // Refresh user data
+      }
+    } catch (error) {
+      console.error('Error starting project:', error);
+      playError();
+    }
   };
 
   const handleContinueProject = (project) => {
+    playClick();
     setSelectedProject(project);
   };
 
   const handleBackToProjects = () => {
+    playClick();
     setSelectedProject(null);
   };
 
-  const handleSaveProgress = (projectId, step) => {
-    // Mock save progress functionality
-    setProjects(prev => 
-      prev.map(p => 
-        p.id === projectId 
-          ? { ...p, currentStep: step, progress: Math.min(100, (step / p.totalSteps) * 100) }
-          : p
-      )
-    );
-    console.log(`Progress saved for project ${projectId}, step ${step}`);
+  const handleSaveProgress = async (projectId, step, isCompleted = false) => {
+    try {
+      const progress = Math.min(100, (step / 10) * 100);
+      const response = await axios.post(`${API}/projects/${projectId}/progress`, {
+        project_id: projectId,
+        step: step,
+        progress: progress,
+        is_completed: isCompleted
+      });
+      
+      if (isCompleted) {
+        playComplete();
+      } else {
+        playStep();
+      }
+      
+      // Check for new badges
+      if (response.data.new_badges && response.data.new_badges.length > 0) {
+        response.data.new_badges.forEach(() => playBadge());
+      }
+      
+      // Refresh user data
+      await loadUserData();
+      
+      console.log(`Progress saved for project ${projectId}, step ${step}`);
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      playError();
+    }
   };
 
+  const handleViewChange = (view) => {
+    playClick();
+    setCurrentView(view);
+  };
+
+  const handleCategoryChange = (category) => {
+    playClick();
+    setSelectedCategory(category);
+  };
+
+  // Get display data based on authentication status
+  const getDisplayProjects = () => {
+    if (!isAuthenticated) {
+      return templates.map(template => ({
+        ...template,
+        progress: 0,
+        currentStep: 0,
+        isCompleted: false
+      }));
+    }
+    return projects;
+  };
+
+  const displayProjects = getDisplayProjects();
   const filteredProjects = selectedCategory === 'all' 
-    ? projects 
-    : projects.filter(p => p.category.toLowerCase() === selectedCategory);
+    ? displayProjects 
+    : displayProjects.filter(p => p.category.toLowerCase() === selectedCategory);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-6xl animate-spin">🎨</div>
+          <p className="text-xl text-gray-600">Loading your awesome projects...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (selectedProject) {
     return (
