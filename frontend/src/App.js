@@ -155,26 +155,51 @@ const Dashboard = () => {
   const handleSaveProgress = async (projectId, step, isCompleted = false) => {
     try {
       const progress = Math.min(100, (step / 10) * 100);
-      const response = await axios.post(`${API}/projects/${projectId}/progress`, {
-        project_id: projectId,
-        step: step,
-        progress: progress,
-        is_completed: isCompleted
-      });
       
-      if (isCompleted) {
-        playComplete();
+      if (isGuest) {
+        // Update guest project in localStorage
+        const updatedProject = updateGuestProject(projectId, {
+          current_step: step,
+          progress: progress,
+          is_completed: isCompleted
+        });
+        
+        if (updatedProject) {
+          // Update guest user stats
+          updateGuestUserStats();
+          
+          if (isCompleted) {
+            playComplete();
+          } else {
+            playStep();
+          }
+          
+          // Refresh guest data
+          await loadGuestData();
+        }
       } else {
-        playStep();
+        // Update backend project
+        const response = await axios.post(`${API}/projects/${projectId}/progress`, {
+          project_id: projectId,
+          step: step,
+          progress: progress,
+          is_completed: isCompleted
+        });
+        
+        if (isCompleted) {
+          playComplete();
+        } else {
+          playStep();
+        }
+        
+        // Check for new badges
+        if (response.data.new_badges && response.data.new_badges.length > 0) {
+          response.data.new_badges.forEach(() => playBadge());
+        }
+        
+        // Refresh user data
+        await loadUserData();
       }
-      
-      // Check for new badges
-      if (response.data.new_badges && response.data.new_badges.length > 0) {
-        response.data.new_badges.forEach(() => playBadge());
-      }
-      
-      // Refresh user data
-      await loadUserData();
       
       console.log(`Progress saved for project ${projectId}, step ${step}`);
     } catch (error) {
