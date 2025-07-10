@@ -121,12 +121,20 @@ const Dashboard = () => {
         setSelectedProject(projectOrTemplate);
       } else {
         // Template - create new project
-        const response = await axios.post(`${API}/projects`, {
-          template_id: projectOrTemplate.id,
-          mode: 'guided'
-        });
-        setSelectedProject(response.data);
-        await loadUserData(); // Refresh user data
+        if (isGuest) {
+          // Create guest project in localStorage
+          const newProject = createGuestProject(projectOrTemplate);
+          setSelectedProject(newProject);
+          await loadGuestData(); // Refresh guest data
+        } else {
+          // Create backend project
+          const response = await axios.post(`${API}/projects`, {
+            template_id: projectOrTemplate.id,
+            mode: 'guided'
+          });
+          setSelectedProject(response.data);
+          await loadUserData(); // Refresh user data
+        }
       }
     } catch (error) {
       console.error('Error starting project:', error);
